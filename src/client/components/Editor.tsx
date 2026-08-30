@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { MERGE_VARIABLES, type StepDto, type TemplateDto } from '@shared/types'
 import { api } from '../lib/api'
+import { buildPreviewDocument } from '../lib/previewDocument'
 import { useApp } from '../App'
 import { Badge, Button, Field, Input, Textarea, Toggle } from './ui'
 import { IconCode, IconEye, IconWarn } from './Icons'
@@ -47,7 +48,6 @@ export function ContentEditor({
   const [testing, setTesting] = useState(false)
   const [testEmail, setTestEmail] = useState('')
   const htmlRef = useRef<HTMLTextAreaElement>(null)
-  const previewRef = useRef<HTMLIFrameElement>(null)
   const [showText, setShowText] = useState(!hideText)
 
   const runPreview = async (): Promise<void> => {
@@ -62,15 +62,6 @@ export function ContentEditor({
       setBusy(false)
     }
   }
-
-  useEffect(() => {
-    if (mode !== 'preview' || !preview || !previewRef.current) return
-    const doc = previewRef.current.contentDocument
-    if (!doc) return
-    doc.open()
-    doc.write(preview.html || '<p>nothing to preview</p>')
-    doc.close()
-  }, [mode, preview])
 
   const insert = (token: string): void => {
     const area = htmlRef.current
@@ -180,7 +171,19 @@ export function ContentEditor({
             <div className="rounded-lg border border-slate-200 bg-white p-3">
               <p className="text-[13.5px] font-semibold text-slate-900">{preview.subject || '(no subject)'}</p>
               {preview.preheader ? <p className="mt-0.5 text-[12px] text-slate-500">{preview.preheader}</p> : null}
-              <iframe ref={previewRef} title="Rendered email preview" className="mt-2.5 h-[420px] w-full rounded-md border border-slate-100 bg-slate-50" sandbox="allow-same-origin" />
+              {/*
+                `srcdoc` rather than an imperative document.write: the frame
+                cannot be written into before it has booted, so the preview can
+                never be silently discarded. A bare `sandbox` puts the rendered
+                email on an opaque origin with scripts off, so it shares none
+                of the app's cookies or storage.
+              */}
+              <iframe
+                title="Rendered email preview"
+                srcDoc={buildPreviewDocument(preview.html)}
+                sandbox=""
+                className="mt-2.5 h-[420px] w-full rounded-md border border-slate-100 bg-slate-50"
+              />
             </div>
           ) : (
             <div className="rounded-lg border border-dashed border-slate-300 p-6 text-center text-[13px] text-slate-500">Render a preview to see the personalisation.</div>
