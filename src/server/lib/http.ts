@@ -30,12 +30,17 @@ export function serializeCookie(
   const bits = [`${name}=${encodeURIComponent(value)}`, 'Path=/', `Max-Age=${Math.floor(opts.maxAgeSeconds ?? 0)}`]
   if (opts.httpOnly !== false) bits.push('HttpOnly')
   if (opts.secure ?? config.isProd) bits.push('Secure')
-  bits.push(`SameSite=${opts.sameSite ?? 'lax'}`)
+  const sameSiteMap: Record<string, string> = { lax: 'Lax', strict: 'Strict', none: 'None' }
+  const sameSite = opts.sameSite ? sameSiteMap[opts.sameSite] ?? opts.sameSite : 'Lax'
+  bits.push(`SameSite=${sameSite}`)
   return bits.join('; ')
 }
 
-export function clearCookie(name: string): string {
-  return serializeCookie(name, '', { maxAgeSeconds: 0 })
+export function clearCookie(
+  name: string,
+  opts: { secure?: boolean; sameSite?: 'lax' | 'strict' | 'none' } = {},
+): string {
+  return serializeCookie(name, '', { maxAgeSeconds: 0, ...opts })
 }
 
 /* ── request helpers ─────────────────────────────────────────────────────── */
