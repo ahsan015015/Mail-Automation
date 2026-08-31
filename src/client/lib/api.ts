@@ -30,7 +30,14 @@ export function apiError(message: string, status: number, issues?: ApiError['iss
   return error
 }
 
+const DEMO = import.meta.env.VITE_DEMO === '1'
+export const isDemoBuild = DEMO
+
 async function request<T>(route: string, init: RequestInit = {}): Promise<T> {
+  if (DEMO) {
+    const { handleDemoRequest } = await import('./demo')
+    return handleDemoRequest<T>(route, init)
+  }
   const headers = new Headers(init.headers)
   if (init.body && !headers.has('content-type')) headers.set('content-type', 'application/json')
   let response: Response

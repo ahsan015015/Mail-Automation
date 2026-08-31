@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
-import { api, type ApiError, type Bootstrap } from './lib/api'
+import { api, isDemoBuild, type ApiError, type Bootstrap } from './lib/api'
 import { useLiveStream, useToasts, type Toast } from './lib/hooks'
 import { Shell } from './components/Layout'
 import { LoginPage } from './pages/Login'
@@ -38,7 +38,7 @@ export function App() {
   const [boot, setBoot] = useState<Bootstrap | null>(null)
   const [fatal, setFatal] = useState<string | null>(null)
   const { toasts, push, dismiss } = useToasts()
-  const live = useLiveStream(Boolean(boot?.user))
+  const live = useLiveStream(!isDemoBuild && Boolean(boot?.user))
 
   const load = useCallback(async () => {
     try {

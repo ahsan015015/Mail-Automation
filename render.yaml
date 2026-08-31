@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: mail-automation
+    runtime: docker
+    plan: starter
+    # Exactly one instance is required: the send engine runs in-process with SQLite
+    numInstances: 1
+    healthCheckPath: /api/health
+    disk:
+      name: mail-data
+      mountPath: /app/var
+      sizeGB: 1
+    envVars:
+      - key: PORT
+        value: 8787
+      - key: HOST
+        value: 0.0.0.0
+      - key: DB_PATH
+        value: /app/var/mail-automation.db
+      - key: MAIL_DIR
+        value: /app/var/mail
+      - key: NODE_ENV
+        value: production
+      - key: SESSION_SECRET
+        generateValue: true

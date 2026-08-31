@@ -28,8 +28,21 @@ function throttle(key: string, max = 10, windowMs = 60_000): void {
   if (entry.count > max) throw new HttpError(429, 'Too many attempts — wait a minute and try again')
 }
 
+function cookieOpts(maxAgeSeconds: number) {
+  const isFramed = config.frameAncestors === '*'
+  return {
+    maxAgeSeconds,
+    sameSite: isFramed ? ('none' as const) : ('lax' as const),
+    secure: isFramed ? true : undefined,
+  }
+}
+
 export function sessionCookie(value: string, maxAgeSeconds = config.sessionTtlHours * 3600): string {
-  return serializeCookie(COOKIE, value, { maxAgeSeconds })
+  return serializeCookie(COOKIE, value, cookieOpts(maxAgeSeconds))
+}
+
+export function clearSessionCookie(): string {
+  return clearCookie(COOKIE, cookieOpts(0))
 }
 
 export function authRouter(): Router {
@@ -45,7 +58,7 @@ export function authRouter(): Router {
   })
 
   router.post('/logout', (_req, res) => {
-    res.setHeader('Set-Cookie', clearCookie(COOKIE))
+    res.setHeader('Set-Cookie', clearSessionCookie())
     res.json({ ok: true })
   })
 

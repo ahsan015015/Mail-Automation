@@ -3,7 +3,9 @@ import { readToken, signToken, randomToken } from '../src/server/lib/tokens.js'
 import { hashPassword, passwordIssues, verifyPassword } from '../src/server/lib/password.js'
 import { signSession, verifySession } from '../src/server/lib/jwt.js'
 import { isPermanentFailure } from '../src/server/services/mailer.js'
-import { isValidEmail, normalizeEmail, serializeCookie, parseCookies } from '../src/server/lib/http.js'
+import { isValidEmail, normalizeEmail, serializeCookie, clearCookie, parseCookies } from '../src/server/lib/http.js'
+import { sessionCookie, clearSessionCookie } from '../src/server/routes/auth.js'
+import { config } from '../src/server/lib/config.js'
 import { page } from '../src/server/lib/page.js'
 import { clampInt, localHour, localWeekend, rate, round, truncate } from '../src/server/lib/util.js'
 
@@ -85,8 +87,31 @@ describe('http + util helpers', () => {
   it('round-trips cookies', () => {
     const header = serializeCookie('ma_session', 'a b', { maxAgeSeconds: 60 })
     expect(header).toContain('HttpOnly')
+    expect(header).toContain('SameSite=Lax')
     expect(parseCookies(`${header}; other=1`).ma_session).toBe('a b')
     expect(parseCookies(undefined)).toEqual({})
+  })
+
+  it('supports framed sessions with SameSite=None; Secure', () => {
+    const originalFrame = config.frameAncestors
+    try {
+      ;(config as { frameAncestors: string }).frameAncestors = '*'
+      const framedCookie = sessionCookie('token123')
+      expect(framedCookie).toContain('SameSite=None')
+      expect(framedCookie).toContain('Secure')
+
+      const framedClear = clearSessionCookie()
+      expect(framedClear).toContain('SameSite=None')
+      expect(framedClear).toContain('Secure')
+      expect(framedClear).toContain('Max-Age=0')
+    } finally {
+      ;(config as { frameAncestors: string }).frameAncestors = originalFrame
+    }
+
+    const defaultCookie = sessionCookie('token123')
+    expect(defaultCookie).toContain('SameSite=Lax')
+    const defaultClear = clearSessionCookie()
+    expect(defaultClear).toContain('SameSite=Lax')
   })
 
   it('clamps, rounds and rates', () => {
